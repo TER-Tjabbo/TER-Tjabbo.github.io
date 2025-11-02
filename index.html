@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TER</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+
+  <style>
+    :root {
+      --bg: #000;
+      --neon: #39ff14;
+    }
+
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--neon);
+      font-family: 'VT323', monospace;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      background: rgba(0,0,0,0.85);
+      border-bottom: 3px solid var(--neon);
+      z-index: 50;
+    }
+    nav {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0.6rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand {
+      font-size: 1.2rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.25rem;
+    }
+    .cursor {
+      display: inline-block;
+      width: .65ch;
+      background: var(--neon);
+      animation: blink 1s steps(1, end) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .menu {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .menu > a,
+    .neon-btn {
+      background: transparent;
+      color: var(--neon);
+      border: 2px solid var(--neon);
+      text-decoration: none;
+      text-transform: uppercase;
+      padding: 0.25rem 0.75rem;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      font: inherit;
+    }
+    .menu > a:hover,
+    .neon-btn:hover {
+      background: var(--neon);
+      color: #000;
+    }
+
+    .dropdown-wrap { position: relative; }
+    .dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      min-width: 220px;
+      padding: 0.35rem;
+      background: var(--bg);
+      z-index: 9999;
+      display: none;
+    }
+    .dropdown.open { display: block; }
+    .dropdown a {
+      display: block;
+      padding: 0.35rem 0.75rem;
+      margin-bottom: 0.25rem;
+      border: 2px solid var(--neon);
+      color: var(--neon);
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .dropdown a:hover {
+      background: var(--neon);
+      color: #000;
+    }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 1rem; }
+    section { display: none; min-height: calc(100vh - 120px); }
+    section.active { display: block; }
+
+    .panel {
+      border: 2px solid var(--neon);
+      border-radius: 10px;
+      background: rgba(0,0,0,0.7);
+      padding: 1.25rem;
+      margin: 1.25rem 0;
+    }
+
+    section img {
+      border: 2px solid var(--neon);
+      display: block;
+      margin: 1rem auto;
+      max-width: 100%;
+    }
+
+    pre {
+      display: block;
+      white-space: pre;
+      line-height: 1;
+      border: 2px solid var(--neon);
+      border-radius: 10px;
+	  padding: 0.2rem 0.3rem;   /* smaller padding top/bottom and sides */
+      background: rgba(0,0,0,0.7);
+      margin: 1rem 0;
+      overflow-x: auto;   /* scroll if too wide */
+      text-align: left;   /* align ASCII properly */
+    }
+    pre code {
+      font-family: 'VT323', monospace;
+      font-size: inherit;
+      color: var(--neon) !important;
+      white-space: pre;
+    }
+	/* Ensure headings leave room for the sticky header */
+	#projects-content h2 {
+	  scroll-margin-top: 80px; /* adjust to your header height */
+	}
+
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <div class="brand">TER<span class="cursor">&nbsp;</span></div>
+      <div class="menu">
+        <a href="#about" data-section="about">About</a>
+        <div class="dropdown-wrap">
+          <button id="projectsBtn" class="neon-btn" aria-expanded="false">Projects ▾</button>
+          <div id="projectsDropdown" class="dropdown"></div>
+        </div>
+        <a href="#contact" data-section="contact">Contact</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section id="about" class="active"><div id="about-content"></div></section>
+    <section id="projects"><div id="projects-content"></div></section>
+    <section id="contact"><div id="contact-content"></div></section>
+  </main>
+
+  <script>
+    async function fetchText(path) {
+      const res = await fetch(path + "?v=" + Date.now());
+      if (!res.ok) throw new Error(`HTTP ${res.status} while fetching ${path}`);
+      return res.text();
+    }
+
+    function showSection(id) {
+      document.querySelectorAll('main section').forEach(s =>
+        s.classList.toggle('active', s.id === id)
+      );
+    }
+
+    function toggleDropdown() {
+      const dd = document.getElementById('projectsDropdown');
+      const open = dd.classList.toggle('open');
+      document.getElementById('projectsBtn').setAttribute('aria-expanded', String(open));
+    }
+    function closeDropdown() {
+      const dd = document.getElementById('projectsDropdown');
+      dd.classList.remove('open');
+      document.getElementById('projectsBtn').setAttribute('aria-expanded', 'false');
+    }
+    document.getElementById('projectsBtn').addEventListener('click', e => {
+      e.stopPropagation();
+      toggleDropdown();
+    });
+    document.addEventListener('click', e => {
+      const dd = document.getElementById('projectsDropdown');
+      if (!dd.contains(e.target) && !document.getElementById('projectsBtn').contains(e.target)) {
+        closeDropdown();
+      }
+    });
+
+    // Configure marked renderer for images
+    marked.use({
+      renderer: {
+        image(token) {
+          const href = token.href || "";
+          const text = token.text || "";
+          let sizeMatch = text.match(/\{width=(\d+%?)\}/);
+          let cleanAlt = text.replace(/\{width=.*?\}/, "").trim();
+          let style = sizeMatch ? `style="width:${sizeMatch[1]};max-width:100%;"` : "";
+          return `<img src="${href}" alt="${cleanAlt}" ${style} 
+                   onerror="this.outerHTML='<p style=\\'color:red\\'>[Image not found: ${href}]</p>'" />`;
+        }
+      }
+    });
+
+    function renderMarkdownToPanels(mdText) {
+      const html = marked.parse(mdText);
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+
+      let panels = "";
+      let current = "";
+
+      temp.childNodes.forEach(node => {
+        if (node.tagName === "H1" || node.tagName === "H2") {
+          if (current) panels += `<div class="panel">${current}</div>`;
+          current = node.outerHTML;
+        } else {
+          current += node.outerHTML || "";
+        }
+      });
+
+      if (current) panels += `<div class="panel">${current}</div>`;
+      return panels;
+    }
+
+    function autoFitAscii(pre) {
+      const text = pre.textContent || "";
+      const lines = text.split(/\n/);
+      const maxCols = Math.max(...lines.map(l => l.length)) || 80;
+      const panel = pre.closest(".panel") || pre.parentElement;
+      const availableWidth = panel.clientWidth - 20;
+      let fontSize = Math.floor(availableWidth / maxCols);
+      if (fontSize < 6) fontSize = 6;
+      pre.style.fontSize = fontSize + "px";
+    }
+	// Remove common leading spaces and center the art
+	function normalizeAscii(lines) {
+	  // Find minimum leading spaces among non-empty lines
+	  let minLeading = Math.min(
+		...lines
+		  .filter(l => l.trim().length > 0)
+		  .map(l => l.match(/^ */)[0].length)
+	  );
+
+	  if (!isFinite(minLeading)) minLeading = 0;
+
+	  <!-- // Remove that many spaces from each line -->
+	  return lines.map(l => l.slice(minLeading));
+	}
+
+	  function animateAscii(codeEl, art, speed=20) {
+	  const pre = codeEl.parentElement;
+
+	  // Normalize leading spaces
+	  let lines = art.split(/\n/).map(l => l.replace(/\r$/, ""));
+	  lines = normalizeAscii(lines);
+
+	  const maxCols = Math.max(...lines.map(l => l.length)) || 80;
+	  const panel = pre.closest(".panel") || pre.parentElement;
+	  const availableWidth = panel.clientWidth - 20;
+
+	  let fontSize = Math.floor(availableWidth / maxCols);
+	  if (fontSize < 6) fontSize = 6;
+
+	  pre.style.fontSize = fontSize + "px";
+	  codeEl.style.color = "var(--neon)";
+	  pre.style.overflowX = "hidden";
+	  pre.style.textAlign = "center";   // center
+
+	  const lineHeight = fontSize * 1.1;
+	  pre.style.minHeight = (lines.length * lineHeight) + "px";
+
+	  codeEl.textContent = "";
+	  let lineIndex = 0;
+
+	  function typeNextLine() {
+		if (lineIndex < lines.length) {
+		  codeEl.textContent += lines[lineIndex] + "\n";
+		  lineIndex++;
+		  setTimeout(typeNextLine, speed);
+		}
+	  }
+
+	  typeNextLine();
+	}
+
+
+    function typeText(container, html=null, speed=10, options={}) {
+      if (html !== null) {
+        container.innerHTML = html;
+      }
+
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+      const textNodes = [];
+      while (walker.nextNode()) {
+        if (options.skipPre && walker.currentNode.parentNode.closest("pre")) {
+          continue;
+        }
+        textNodes.push(walker.currentNode);
+      }
+
+      const originals = textNodes.map(node => node.nodeValue);
+      textNodes.forEach(node => node.nodeValue = "");
+
+      function typeChar() {
+        for (let n = 0; n < textNodes.length; n++) {
+          const full = originals[n];
+          const current = textNodes[n].nodeValue;
+          if (current.length < full.length) {
+            textNodes[n].nodeValue = full.slice(0, current.length + 1);
+            setTimeout(typeChar, speed);
+            return;
+          }
+        }
+      }
+
+      typeChar();
+    }
+
+    async function processAsciiLinks(scopeEl, fast=false) {
+      const asciiLinks = scopeEl.querySelectorAll("a[href$='.txt']");
+      for (const link of asciiLinks) {
+        const href = link.getAttribute("href");
+        let label = link.textContent.trim().toLowerCase();
+        let speed = 20;
+
+        if (label === "ascii" || label === "ascii-static") {
+          try {
+            const art = await fetchText(href);
+            const pre = document.createElement("pre");
+            const code = document.createElement("code");
+            pre.appendChild(code);
+            link.replaceWith(pre);
+
+            if (label === "ascii") {
+              animateAscii(code, art, fast ? 2 : speed);
+            } else {
+				  let lines = art.split(/\n/).map(l => l.replace(/\r$/, ""));
+				  lines = normalizeAscii(lines);
+				  code.textContent = lines.join("\n");
+				  autoFitAscii(pre);
+				  pre.style.textAlign = "center";   // center static ASCII too
+				}
+
+          } catch (err) {
+            console.error("Failed to load ASCII:", href, err);
+            link.outerHTML = `<p style="color:red">[Error loading ${href}]</p>`;
+          }
+        }
+      }
+    }
+
+    async function loadSection(id, filename) {
+      const panel = document.getElementById(id + '-content');
+      panel.innerHTML = '<p>Loading…</p>';
+      try {
+        const raw = await fetchText(filename);
+        const panels = renderMarkdownToPanels(raw);
+
+        if (id === "about") {
+          panel.innerHTML = panels;
+          await processAsciiLinks(panel, true);
+          typeText(panel, null, 15, { skipPre: true });
+        } else {
+          panel.innerHTML = panels;
+          await processAsciiLinks(panel);
+          if (window.MathJax?.typesetPromise) {
+            await MathJax.typesetPromise([panel]);
+          }
+        }
+
+        if (id === 'projects') {
+          buildProjectsDropdown();
+        }
+      } catch (err) {
+        console.error("Error loading section", id, err);
+        panel.innerHTML = `<p style="color:red">Error loading ${filename}</p>`;
+      }
+    }
+
+    function buildProjectsDropdown() {
+      const listEl = document.getElementById('projectsDropdown');
+      listEl.innerHTML = '';
+      const headings = document.querySelectorAll('#projects-content h2');
+      if (headings.length === 0) {
+        listEl.innerHTML = '<a>&gt; No projects yet</a>';
+        return;
+      }
+      headings.forEach(h2 => {
+        const a = document.createElement('a');
+        a.href = '#projects';
+        a.textContent = '> ' + h2.textContent;
+        a.addEventListener('click', e => {
+          e.preventDefault();
+          showSection('projects');
+          h2.scrollIntoView({ behavior: 'smooth' });
+          closeDropdown();
+        });
+        listEl.appendChild(a);
+      });
+    }
+
+    document.querySelectorAll('[data-section]').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const id = link.getAttribute('data-section');
+        showSection(id);
+        loadSection(id, id + '.md');
+      });
+    });
+
+    (async function init() {
+      await loadSection('about', 'about.md');
+      await loadSection('projects', 'projects.md');
+      await loadSection('contact', 'contact.md');
+      showSection('about');
+    })();
+
+    window.addEventListener('hashchange', () => {
+      const h = location.hash.replace('#', '');
+      if (['about','projects','contact'].includes(h)) {
+        showSection(h);
+        loadSection(h, h + '.md');
+      }
+    });
+  </script>
+</body>
+</html>
