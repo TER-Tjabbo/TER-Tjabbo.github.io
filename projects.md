@@ -30,12 +30,13 @@ Second
 [ascii](figures/ascii_output.txt)
 
 
-## Neon Clock
+## Other Projects
+
+### Disco Lamp
+For my girlfriends birthday i bought an ikea lamp and upgraded it by putting small disco tiles on the lamp. I then installed a light source that shines light on the lamp to have a real disco effect :)
 
 <!-- ![Figure](figures/IMG_2985_stencil.JPEG) -->
 
-| ![space-1.jpg](figures/IMG_2985_stencil.JPEG) | 
+| ![DiscoLamp](figures/DiscoLamp.jpg) | 
 |:--:| 
-| *Space* |
-
-text again
+| Funky vibes in the living room |
